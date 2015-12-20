@@ -9,9 +9,9 @@ Add to crontab to regularly sync local to remote.
     */3 * * * * python syncer.py
 
 It will automatically read it's configuration information from a json formatted file named
-config in the current directory.
+*config* in the current directory.
 
-The settings are as follows you can copy and paste the below:
+The config file settings are as follows. You can copy and paste the below:
 
 
     {
