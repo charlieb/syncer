@@ -37,8 +37,10 @@ class Syncer(object):
         config = json.load(open(config_filename))
         for k in config: self.__dict__[k] = config[k] 
 
-    def ls(self, filename=''): #TODO switch to find for simplicity
-        process = subprocess.Popen("ssh %s ls %s"%(self.remote_host, self.remote_directory+'/'+ filename),
+    def get_media_filenames(self): 
+        media_extensions = ['avi','mkv','mpg','mp4','m4v']
+        command = '''ssh %s "find %s -iregex '.*\.\(%s\)'"'''%(self.remote_host, self.remote_directory, '\|'.join(media_extensions))
+        process = subprocess.Popen(command,
             shell=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT)
@@ -47,19 +49,9 @@ class Syncer(object):
         print status
         return output.split('\n') 
         
-    def get_media_filenames(self, filename):
-        media_extensions = ['avi','mkv','mpg','mp4','m4v']
-        is_media = lambda f: any([f.endswith(ext) for ext in media_extensions])
-        if is_media(filename):
-            return [filename]
-        else:
-            return [filename +'/'+ f for f in self.ls(filename + '*') if is_media(f)]
-
     def get(self, filename):
         print "Getting " + filename
-        process = subprocess.Popen("scp %s:%s %s"%(self.remote_host,
-                                        self.remote_directory
-                                        +'/'+ filename, self.local_directory),
+        process = subprocess.Popen("scp %s:%s %s"%(self.remote_host, filename, self.local_directory),
             shell=True)
         status = process.poll()
 
@@ -82,15 +74,12 @@ class Syncer(object):
             mail.close()
 
     def sync(self, update_synced_only = False):
-        dirs = set(self.ls())
-        self.last_get = set()
+        all_media = set(self.get_media_filenames()) 
+        self.last_get = all_media - self.synced
+        print self.last_get
         if not update_synced_only:
-            unsynced = dirs - self.synced
-            self.last_get = set(reduce(lambda x,y: x + y, 
-                            [self.get_media_filenames(us) for us in unsynced],
-                            []))
             for f in self.last_get: self.get(f)
-        self.synced = dirs
+        self.synced = all_media
         self.write_synced()
 
 def test():
